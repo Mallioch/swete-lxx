@@ -28,13 +28,53 @@ import xml.sax
 class SweteLXX(xml.sax.handler.ContentHandler):
     "Parser for Swete LXX XML"
 
+    def __init__(self):
+        "Initialize varibales"
+
+        self.in_book = False
+        self.in_header = False
+        self.in_note = False
+        self.current_book = ""
+
     def startElement(self, name, attrs):
         "Actions for encountering open tags"
 
         if ( name == "div" and "subtype" in attrs.getNames()
              and attrs.getValue("subtype") == "chapter" ):
-            print attrs.getValue("n")
+            self.in_book = True
+            self.current_book = "%02d" % int(attrs.getValue("n"))
+            print "Entering book %s" % self.current_book
 
+        elif name == "head":
+            self.in_header = True
+
+        elif name == "note":
+            self.in_note = True
+
+    def characters(self, data):
+        "Handle text"
+
+        # Print the book head tags (titles)
+        if self.in_header:
+            print data.encode("UTF-8")
+        # If not in a header, and not in a note
+        elif self.in_book and not self.in_note:
+            tokens = data.split()
+            for token in tokens:
+                print "%s %s" % (self.current_book, token.encode("UTF-8"))
+                
+    def endElement(self, name):
+        "Actions for encountering closed tags"
+
+        if ( name == "div" and self.in_book == True ):
+            self.in_book = False
+            print "Close book"
+
+        elif name == "head":
+            self.in_header = False
+
+        elif name == "note":
+            self.in_note = False
 
 if __name__ == "__main__":
     vol = open('source/old_testament_1901_vol1.xml', 'r')
