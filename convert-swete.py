@@ -21,6 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import re
 import xml.sax
 
 
@@ -34,12 +35,18 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         self.in_header = False
         self.in_note = False
         self.current_book = ""
+        self.current_chapter = 0
+        self.current_verse = "001"
+
+        # Regex patterns
+        self.verse_pat = re.compile(r'\d{1,3}')
 
     def startElement(self, name, attrs):
         "Actions for encountering open tags"
 
         if (name == "div" and "subtype" in attrs.getNames()
            and attrs.getValue("subtype") == "chapter"):
+            # A "chapter" in TEI is a "book" for our purposes
             self.in_book = True
             self.current_book = "%02d" % int(attrs.getValue("n"))
             print "Entering book %s" % self.current_book
@@ -60,7 +67,18 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         elif self.in_book and not self.in_note:
             tokens = data.split()
             for token in tokens:
-                print "%s %s" % (self.current_book, token.encode("UTF-8"))
+                # Look for verses
+                has_verse = self.verse_pat.match(token)
+                if has_verse:
+                    self.current_verse = "%03d" % int(has_verse.group(0))
+                    # Reform the token without the verse prefix
+                    token = token[len(has_verse.group(0)):]
+                    # Assuming a verse ended up in its own token, no need
+                    # to print an empty line
+                    if len(token) < 1:
+                        continue
+                print "%sCCC%s %s" % (self.current_book, self.current_verse,
+                                      token.encode("UTF-8"))
 
     def endElement(self, name):
         "Actions for encountering closed tags"
