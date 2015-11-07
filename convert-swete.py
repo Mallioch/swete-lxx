@@ -21,7 +21,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import codecs
 import xml.sax
 
 
@@ -39,8 +38,8 @@ class SweteLXX(xml.sax.handler.ContentHandler):
     def startElement(self, name, attrs):
         "Actions for encountering open tags"
 
-        if ( name == "div" and "subtype" in attrs.getNames()
-             and attrs.getValue("subtype") == "chapter" ):
+        if (name == "div" and "subtype" in attrs.getNames()
+           and attrs.getValue("subtype") == "chapter"):
             self.in_book = True
             self.current_book = "%02d" % int(attrs.getValue("n"))
             print "Entering book %s" % self.current_book
@@ -62,11 +61,11 @@ class SweteLXX(xml.sax.handler.ContentHandler):
             tokens = data.split()
             for token in tokens:
                 print "%s %s" % (self.current_book, token.encode("UTF-8"))
-                
+
     def endElement(self, name):
         "Actions for encountering closed tags"
 
-        if ( name == "div" and self.in_book == True ):
+        if (name == "div" and self.in_book):
             self.in_book = False
             print "Close book"
 
