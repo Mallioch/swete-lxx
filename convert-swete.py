@@ -34,12 +34,29 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         self.in_book = False
         self.in_header = False
         self.in_note = False
-        self.current_book = ""
-        self.current_chapter = 0
-        self.current_verse = "001"
+        self.page_right = False
+        self.current_page = 0
 
         # Regex patterns
         self.verse_pat = re.compile(r'\d{1,3}')
+
+        # Set up the reference
+        self.reset_ref()
+
+    def reset_ref(self):
+        "Reset the references on book transition"
+
+        self.current_book = ""
+        self.current_chapter = 1
+        self.current_verse = "001"
+
+    def set_verse(self, verse):
+        "Set the current_verse (and sometimes chapter) on transitions"
+
+        self.current_verse = "%03d" % verse
+        # Increment the chapter if the verse is back at 1
+        if verse == 1:
+            self.current_chapter += 1
 
     def startElement(self, name, attrs):
         "Actions for encountering open tags"
@@ -48,6 +65,8 @@ class SweteLXX(xml.sax.handler.ContentHandler):
            and attrs.getValue("subtype") == "chapter"):
             # A "chapter" in TEI is a "book" for our purposes
             self.in_book = True
+            # Reset reference info
+            self.reset_ref()
             self.current_book = "%02d" % int(attrs.getValue("n"))
             print "Entering book %s" % self.current_book
 
@@ -56,6 +75,21 @@ class SweteLXX(xml.sax.handler.ContentHandler):
 
         elif name == "note":
             self.in_note = True
+
+        elif name == "pb" and self.in_book:
+            self.current_page = int(attrs.getValue("n"))
+            if not self.current_page % 2:
+                self.page_right = True
+            else:
+                self.page_right = False
+
+        elif name == "lb" and self.in_book and self.page_right:
+            # When on the right hand side, if the lb is higher than the verse
+            # number, there must be a verse break which doesn't appear in
+            # tokens, therefore increment the verse
+            lb_verse = int(attrs.getValue("n"))
+            if lb_verse > int(self.current_verse):
+                self.set_verse(lb_verse)
 
     def characters(self, data):
         "Handle text"
@@ -70,15 +104,18 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                 # Look for verses
                 has_verse = self.verse_pat.match(token)
                 if has_verse:
-                    self.current_verse = "%03d" % int(has_verse.group(0))
+                    new_verse = has_verse.group(0)
+                    self.set_verse(int(new_verse))
                     # Reform the token without the verse prefix
-                    token = token[len(has_verse.group(0)):]
+                    token = token[len(new_verse):]
                     # Assuming a verse ended up in its own token, no need
                     # to print an empty line
                     if len(token) < 1:
                         continue
-                print "%sCCC%s %s" % (self.current_book, self.current_verse,
-                                      token.encode("UTF-8"))
+                print "%s%03d%s %s" % (self.current_book,
+                                       self.current_chapter,
+                                       self.current_verse,
+                                       token.encode("UTF-8"))
 
     def endElement(self, name):
         "Actions for encountering closed tags"
