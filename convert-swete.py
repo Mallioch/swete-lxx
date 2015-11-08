@@ -1,4 +1,5 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
+#
 # Convert Swete XML files to one token per line, with verses.
 #
 # Copyright 2015 Nathan D. Smith <nathan@smithfam.info>
@@ -68,7 +69,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
             # Reset reference info
             self.reset_ref()
             self.current_book = "%02d" % int(attrs.getValue("n"))
-            print "Entering book %s" % self.current_book
+            print("Entering book %s" % self.current_book)
 
         elif name == "head":
             self.in_header = True
@@ -96,7 +97,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
 
         # Print the book head tags (titles)
         if self.in_header:
-            print data.encode("UTF-8")
+            print(data.encode("UTF-8"))
         # If not in a header, and not in a note
         elif self.in_book and not self.in_note:
             tokens = data.split()
@@ -112,17 +113,17 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                     # to print an empty line
                     if len(token) < 1:
                         continue
-                print "%s%03d%s %s" % (self.current_book,
+                print("%s%03d%s %s" % (self.current_book,
                                        self.current_chapter,
                                        self.current_verse,
-                                       token.encode("UTF-8"))
+                                       token))
 
     def endElement(self, name):
         "Actions for encountering closed tags"
 
         if (name == "div" and self.in_book):
             self.in_book = False
-            print "Close book"
+            print("Close book")
 
         elif name == "head":
             self.in_header = False
