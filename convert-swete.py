@@ -22,9 +22,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import koine
 import re
 import xml.sax
 
+FILTER_CHARS = ["¶", "[", "]"]
 
 class SweteLXX(xml.sax.handler.ContentHandler):
     "Parser for Swete LXX XML"
@@ -58,6 +60,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         if verse < int(self.current_verse):
             self.current_chapter += 1
         self.current_verse = "%03d" % verse
+        print(self.current_verse)
 
     def startElement(self, name, attrs):
         "Actions for encountering open tags"
@@ -65,11 +68,13 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         if (name == "div" and "subtype" in attrs.getNames()
            and attrs.getValue("subtype") == "chapter"):
             # A "chapter" in TEI is a "book" for our purposes
-            self.in_book = True
+            # TODO FIX
+            # Only count book that we want
+            if (attrs.getValue("n")) == "6":
+                self.in_book = True
             # Reset reference info
             self.reset_ref()
             self.current_book = "%02d" % int(attrs.getValue("n"))
-            print("Entering book %s" % self.current_book)
 
         elif name == "head":
             self.in_header = True
@@ -99,10 +104,10 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         "Handle text"
 
         # Print the book head tags (titles)
-        if self.in_header:
-            print(data.encode("UTF-8"))
+        # if self.in_header:
+            # print(data.encode("UTF-8"))
         # If not in a header, and not in a note
-        elif self.in_book and not self.in_note:
+        if self.in_book and not self.in_note:
             tokens = data.split()
             for token in tokens:
                 # Look for verses
@@ -112,21 +117,25 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                     self.set_verse(int(new_verse))
                     # Reform the token without the verse prefix
                     token = token[len(new_verse):]
-                    # Assuming a verse ended up in its own token, no need
-                    # to print an empty line
-                    if len(token) < 1:
-                        continue
-                print("%s%03d%s %s" % (self.current_book,
-                                       self.current_chapter,
-                                       self.current_verse,
-                                       token))
+                # Assuming a verse ended up in its own token, no need
+                # to print an empty line
+                for char in FILTER_CHARS:
+                    token.replace(char, "")
+                if len(token) < 1:
+                    continue
+                end_token = koine.normalize(token)
+                print(end_token)
+#                    print("%s%03d%s %s" % (self.current_book,
+#                                           self.current_chapter,
+#                                           self.current_verse,
+#                                           end_token))
 
     def endElement(self, name):
         "Actions for encountering closed tags"
 
         if (name == "div" and self.in_book):
             self.in_book = False
-            print("Close book")
+            # print("Close book")
 
         elif name == "head":
             self.in_header = False
@@ -135,7 +144,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
             self.in_note = False
 
 if __name__ == "__main__":
-    vol = open('source/old_testament_1901_vol1.xml', 'r')
+    vol = open('source/old_testament_1930_vol3.xml', 'r')
     parser = xml.sax.make_parser()
     parser.setContentHandler(SweteLXX())
     parser.parse(vol)
