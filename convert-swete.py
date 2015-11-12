@@ -54,10 +54,10 @@ class SweteLXX(xml.sax.handler.ContentHandler):
     def set_verse(self, verse):
         "Set the current_verse (and sometimes chapter) on transitions"
 
-        self.current_verse = "%03d" % verse
-        # Increment the chapter if the verse is back at 1
-        if verse == 1:
+        # Increment the chapter if the verse goes lower
+        if verse < int(self.current_verse):
             self.current_chapter += 1
+        self.current_verse = "%03d" % verse
 
     def startElement(self, name, attrs):
         "Actions for encountering open tags"
@@ -88,7 +88,10 @@ class SweteLXX(xml.sax.handler.ContentHandler):
             # When on the right hand side, if the lb is higher than the verse
             # number, there must be a verse break which doesn't appear in
             # tokens, therefore increment the verse
-            lb_verse = int(attrs.getValue("n"))
+            try:
+                lb_verse = int(attrs.getValue("n"))
+            except:
+                lb_verse = int(self.current_verse) + 1
             if lb_verse > int(self.current_verse):
                 self.set_verse(lb_verse)
 
