@@ -22,16 +22,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import koine
+import argparse
 import re
 import xml.sax
+
+import koine
 
 FILTER_CHARS = ["¶", "[", "]"]
 
 class SweteLXX(xml.sax.handler.ContentHandler):
     "Parser for Swete LXX XML"
 
-    def __init__(self):
+    def __init__(self, book):
         "Initialize varibales"
 
         self.in_book = False
@@ -39,6 +41,8 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         self.in_note = False
         self.page_right = False
         self.current_page = 0
+
+        self.target_book = book
 
         # Regex patterns
         self.verse_pat = re.compile(r'\d{1,3}')
@@ -68,9 +72,8 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         if (name == "div" and "subtype" in attrs.getNames()
            and attrs.getValue("subtype") == "chapter"):
             # A "chapter" in TEI is a "book" for our purposes
-            # TODO FIX
             # Only count book that we want
-            if (attrs.getValue("n")) == "6":
+            if (attrs.getValue("n")) == self.target_book:
                 self.in_book = True
             # Reset reference info
             self.reset_ref()
@@ -144,7 +147,17 @@ class SweteLXX(xml.sax.handler.ContentHandler):
             self.in_note = False
 
 if __name__ == "__main__":
-    vol = open('source/old_testament_1930_vol3.xml', 'r')
+    argparser = argparse.ArgumentParser(
+        description='Convert Swete TEI to one line per token..')
+    argparser.add_argument('--file', '-f', metavar='<path>', type=str,
+                           help='Path to the input file.')
+    argparser.add_argument('--chapter', '-c', metavar='<num>', type=str,
+                           help='Chapter (book) number to process.')
+    args = argparser.parse_args()
+    vol = open(args.file, 'r')
     parser = xml.sax.make_parser()
-    parser.setContentHandler(SweteLXX())
+    parser.setContentHandler(SweteLXX(book=args.chapter))
     parser.parse(vol)
+
+# TODO
+## Specify output mode
