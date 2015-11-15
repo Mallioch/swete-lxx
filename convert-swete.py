@@ -24,16 +24,26 @@
 
 import argparse
 import re
+import unicodedata
 import xml.sax
 
 import koine
 
 FILTER_CHARS = ["¶", "[", "]"]
 
+VOLUMES = {1: "old_testament_1901_vol1.xml",
+           2: "old_testament_1901_vol1.xml",
+           3: "old_testament_1930_vol3.xml"}
+
+OFFSET = {1: 0,
+          2: 12,
+          3: 27}
+
+
 class SweteLXX(xml.sax.handler.ContentHandler):
     "Parser for Swete LXX XML"
 
-    def __init__(self, book):
+    def __init__(self, book, task, volume):
         "Initialize varibales"
 
         self.in_book = False
@@ -43,6 +53,10 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         self.current_page = 0
 
         self.target_book = book
+        self.task = task
+        self.volume = volume
+        # Set the cumulative offset of books from one in subsequent volumes
+        self.book_offset = OFFSET[self.volume]
 
         # Regex patterns
         self.verse_pat = re.compile(r'\d{1,3}')
@@ -64,7 +78,15 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         if verse < int(self.current_verse):
             self.current_chapter += 1
         self.current_verse = "%03d" % verse
-        print(self.current_verse)
+        # Only print verse boundaries in compare mode
+        if self.task == "compare":
+            print(self.current_verse)
+
+    def unicode_normalize(self, text):
+        """Return the given text normalized to Unicode NFC."""
+
+        normalized_text = unicodedata.normalize('NFKC', text)
+        return normalized_text
 
     def startElement(self, name, attrs):
         "Actions for encountering open tags"
@@ -77,7 +99,8 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                 self.in_book = True
             # Reset reference info
             self.reset_ref()
-            self.current_book = "%02d" % int(attrs.getValue("n"))
+            self.current_book = "%02d" % (int(attrs.getValue("n"))
+                                          + self.book_offset)
 
         elif name == "head":
             self.in_header = True
@@ -108,7 +131,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
 
         # Print the book head tags (titles)
         # if self.in_header:
-            # print(data.encode("UTF-8"))
+        #      print(data.encode("UTF-8"))
         # If not in a header, and not in a note
         if self.in_book and not self.in_note:
             tokens = data.split()
@@ -127,11 +150,14 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                 if len(token) < 1:
                     continue
                 end_token = koine.normalize(token)
-                print(end_token)
-#                    print("%s%03d%s %s" % (self.current_book,
-#                                           self.current_chapter,
-#                                           self.current_verse,
-#                                           end_token))
+                # Print only the normalized form
+                if self.task == "compare":
+                    print(end_token)
+                elif self.task == "convert":
+                    print("%s%03d%s %s" % (self.current_book,
+                                           self.current_chapter,
+                                           self.current_verse,
+                                           self.unicode_normalize(token)))
 
     def endElement(self, name):
         "Actions for encountering closed tags"
@@ -149,15 +175,18 @@ class SweteLXX(xml.sax.handler.ContentHandler):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
         description='Convert Swete TEI to one line per token..')
-    argparser.add_argument('--file', '-f', metavar='<path>', type=str,
-                           help='Path to the input file.')
+    subs = argparser.add_subparsers(dest='command')
+    argparser_diff = subs.add_parser("compare",
+                                     help="Print normalized comparison text")
+    argparser_convert = subs.add_parser("convert", help="Print converted text")
+    argparser.add_argument('--volume', '-v', metavar='<num>', type=int,
+                           help='Volume to process.')
     argparser.add_argument('--chapter', '-c', metavar='<num>', type=str,
                            help='Chapter (book) number to process.')
-    args = argparser.parse_args()
-    vol = open(args.file, 'r')
-    parser = xml.sax.make_parser()
-    parser.setContentHandler(SweteLXX(book=args.chapter))
-    parser.parse(vol)
 
-# TODO
-## Specify output mode
+    args = argparser.parse_args()
+    vol = open(VOLUMES[args.volume], 'r')
+    parser = xml.sax.make_parser()
+    parser.setContentHandler(SweteLXX(book=args.chapter, task=args.command,
+                                      volume=args.volume))
+    parser.parse(vol)
