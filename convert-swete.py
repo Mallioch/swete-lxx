@@ -133,7 +133,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         # if self.in_header:
         #      print(data.encode("UTF-8"))
         # If not in a header, and not in a note
-        if self.in_book and not self.in_note:
+        if self.in_book and not self.in_note and not self.in_header:
             tokens = data.split()
             for token in tokens:
                 # Look for verses
