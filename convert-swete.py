@@ -32,7 +32,7 @@ import koine
 FILTER_CHARS = ["¶", "[", "]"]
 
 VOLUMES = {1: "old_testament_1901_vol1.xml",
-           2: "old_testament_1901_vol1.xml",
+           2: "old_testament_1891_vol2.xml",
            3: "old_testament_1930_vol3.xml"}
 
 OFFSET = {1: 0,
