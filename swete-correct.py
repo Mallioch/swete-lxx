@@ -28,7 +28,7 @@
 # SOFTWARE.
 
 import argparse
-from curses import wrapper
+import curses
 
 diff_chars = ["<", ">", "|"]
 
@@ -44,19 +44,26 @@ def main(stdscr, lines):
                 eval_line = True
         # Prepare to work if eval_line is True
         if eval_line:
+            stdscr.addstr(23, 0, str(line))
             # Show context of up to 5 lines (if possible)
             start_line = line - 6
             if start_line < 0:
                 start_line = 0
-                end_line = line + 6
+            end_line = line + 7
             if end_line > ( len(lines) - 1 ):
                 end_line = len(lines) - 1
             display_lines = lines[start_line:end_line]
             for num in range(len(display_lines)):
-                stdscr.addstr(num, 0, display_lines[num])
+                # If this is the line, emphasize
+                if display_lines[num] == lines[line]:
+                    stdscr.addstr(num, 0, display_lines[num],
+                                  curses.A_STANDOUT)
+                else:
+                    stdscr.addstr(num, 0, display_lines[num])
 
             stdscr.refresh()
             stdscr.getkey()
+            stdscr.clear()
 
 
 if __name__ == "__main__":
@@ -70,4 +77,4 @@ if __name__ == "__main__":
 
     lines = args.file.readlines()
 
-    wrapper(main, lines)
+    curses.wrapper(main, lines)
