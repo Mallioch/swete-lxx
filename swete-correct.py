@@ -43,7 +43,8 @@ def menu(stdscr, line):
     """Draw the menu options in the user interface."""
 
     elements = line.split()
-    reference = elements[0]
+    ref = elements[0]
+    new = elements[1]
 
     options = ["n", "c", "v"]
 
@@ -53,7 +54,8 @@ def menu(stdscr, line):
     out_line = curses.LINES - (1 + len(options))
 
     for option in options:
-        option_text = "{}) {}".format(option, menu_options[option])
+        option_text = "{}) {}".format(option,
+                                      menu_options[option].format(ref, new))
         stdscr.addstr(out_line, 0, option_text)
         # Increment output line so we don't overwrite
         out_line += 1
