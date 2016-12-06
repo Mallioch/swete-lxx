@@ -29,14 +29,32 @@
 
 import argparse
 import curses
+import re
 
 diff_chars = ["<", ">", "|"]
 
-def main(stdscr, lines):
+def main(stdscr, book, lines):
     stdscr.clear()
+
+    corrections = []
+    chapter = 1
+    verse = 0
+
+    # re set-up
+    verse_line = re.compile('^\d{3}.*$')
 
     # Search each line for differences
     for line in range(len(lines)):
+        text = lines[line]
+
+        # Update reference based on left column
+        if verse_line.match(text):
+            old_verse = verse
+            verse = int(text[0:3])
+            # Update chapter if verse num goes down
+            if old_verse > verse:
+                chapter += 1
+
         eval_line = False
         # Look for diff_chars in line and set flag to eval_line
         for diff_char in diff_chars:
@@ -44,7 +62,9 @@ def main(stdscr, lines):
                 eval_line = True
         # Prepare to work if eval_line is True
         if eval_line:
-            stdscr.addstr(23, 0, str(line))
+            status_line = "L: {} B: {} C: {} V: {}".format(line, book,
+                                                           chapter, verse)
+            stdscr.addstr(23, 0, str(status_line))
             # Show context of up to 5 lines (if possible)
             start_line = line - 6
             if start_line < 0:
@@ -62,7 +82,8 @@ def main(stdscr, lines):
                     stdscr.addstr(num, 0, display_lines[num])
 
             stdscr.refresh()
-            stdscr.getkey()
+            resp = stdscr.getkey()
+            corrections.append(resp)
             stdscr.clear()
 
 
@@ -75,6 +96,7 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
 
+    book = args.file.name.split(".")[0]
     lines = args.file.readlines()
 
-    curses.wrapper(main, lines)
+    curses.wrapper(main, book, lines)
