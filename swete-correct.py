@@ -35,7 +35,10 @@ diff_chars = ["<", ">", "|"]
 
 
 def menu(stdscr, line):
-    """Draw the menu options in the user interface."""
+    """Draw the menu options in the user interface and return the list of
+    valid options.
+
+    """
 
     elements = line.split()
     ref = elements[0]
@@ -72,6 +75,8 @@ def menu(stdscr, line):
         stdscr.addstr(out_line, 0, option_text)
         # Increment output line so we don't overwrite
         out_line += 1
+
+    return options
 
 
 def main(stdscr, book, lines):
@@ -128,8 +133,13 @@ def main(stdscr, book, lines):
                                   curses.color_pair(1))
 
             stdscr.refresh()
-            menu(stdscr, text)
-            resp = stdscr.getkey()
+            # Draw menu until legitimate response is received
+            need_response = True
+            while need_response:
+                options = menu(stdscr, text)
+                resp = stdscr.getkey()
+                if resp in options:
+                    need_response = False
             corrections.append(resp)
             stdscr.clear()
 
