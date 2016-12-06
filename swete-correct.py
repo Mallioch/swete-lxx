@@ -33,29 +33,42 @@ import re
 
 diff_chars = ["<", ">", "|"]
 
-menu_options = {
-    "n": "no change (reading is correct)",
-    "c": "correct {} to {}",
-    "v": "versification"
-    }
 
 def menu(stdscr, line):
     """Draw the menu options in the user interface."""
 
     elements = line.split()
     ref = elements[0]
-    new = elements[1]
+    new = elements[-1]
 
-    options = ["n", "c", "v"]
+    menu_options = {
+        "n": "no change",
+        "c": "correct {} to {}".format(new, ref),
+        "i": "insert {}".format(ref),
+        "d": "delete {}".format(new),
+        "v": "versification",
+        "q": "quit"
+    }
+
+    # Always at the beginning of the list
+    options = ["n"]
 
     # logic here for contextual options
+    if "<" in elements:
+        options.append("i")
+    elif ">" in elements:
+        options.append("d")
+    elif "|" in elements:
+        options.append("c")
+
+    # Always at the end of the list
+    options.extend(["v", "q"])
 
     # out line based on terminal size minus last line, minus options
     out_line = curses.LINES - (1 + len(options))
 
     for option in options:
-        option_text = "{}) {}".format(option,
-                                      menu_options[option].format(ref, new))
+        option_text = "{}) {}".format(option, menu_options[option])
         stdscr.addstr(out_line, 0, option_text)
         # Increment output line so we don't overwrite
         out_line += 1
