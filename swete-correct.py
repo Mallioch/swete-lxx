@@ -33,8 +33,38 @@ import re
 
 diff_chars = ["<", ">", "|"]
 
+menu_options = {
+    "n": "no change (reading is correct)",
+    "c": "correct {} to {}",
+    "v": "versification"
+    }
+
+def menu(stdscr, line):
+    """Draw the menu options in the user interface."""
+
+    elements = line.split()
+    reference = elements[0]
+
+    options = ["n", "c", "v"]
+
+    # logic here for contextual options
+
+    # out line based on terminal size minus last line, minus options
+    out_line = curses.LINES - (1 + len(options))
+
+    for option in options:
+        option_text = "{}) {}".format(option, menu_options[option])
+        stdscr.addstr(out_line, 0, option_text)
+        # Increment output line so we don't overwrite
+        out_line += 1
+
+
 def main(stdscr, book, lines):
+    """The main program loop."""
+
+    # Curses set-up
     stdscr.clear()
+    curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
     corrections = []
     chapter = 1
@@ -64,7 +94,7 @@ def main(stdscr, book, lines):
         if eval_line:
             status_line = "L: {} B: {} C: {} V: {}".format(line, book,
                                                            chapter, verse)
-            stdscr.addstr(23, 0, str(status_line))
+            stdscr.addstr((curses.LINES - 1), 0, str(status_line), curses.A_REVERSE)
             # Show context of up to 5 lines (if possible)
             start_line = line - 6
             if start_line < 0:
@@ -77,11 +107,13 @@ def main(stdscr, book, lines):
                 # If this is the line, emphasize
                 if display_lines[num] == lines[line]:
                     stdscr.addstr(num, 0, display_lines[num],
-                                  curses.A_STANDOUT)
+                                  curses.A_BOLD)
                 else:
-                    stdscr.addstr(num, 0, display_lines[num])
+                    stdscr.addstr(num, 0, display_lines[num],
+                                  curses.color_pair(1))
 
             stdscr.refresh()
+            menu(stdscr, text)
             resp = stdscr.getkey()
             corrections.append(resp)
             stdscr.clear()
