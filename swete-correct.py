@@ -33,6 +33,8 @@ import re
 
 diff_chars = ["<", ">", "|"]
 
+menu_choices = ["n", "c", "i", "d", "f", "v", "q"]
+
 
 def menu(stdscr, line):
     """Draw the menu options in the user interface and return the list of
@@ -44,39 +46,41 @@ def menu(stdscr, line):
     ref = elements[0]
     new = elements[-1]
 
+    # Always at the beginning of the list
     menu_options = {
         "n": "no change",
-        "c": "correct {} to {}".format(new, ref),
-        "i": "insert {}".format(ref),
-        "d": "delete {}".format(new),
-        "v": "versification",
-        "q": "quit"
     }
-
-    # Always at the beginning of the list
-    options = ["n"]
 
     # logic here for contextual options
     if "<" in elements:
-        options.append("i")
+        menu_options["i"] = "insert {}".format(ref)
     elif ">" in elements:
-        options.append("d")
+        menu_options["d"] = "delete {}".format(new)
     elif "|" in elements:
-        options.append("c")
+        menu_options["c"] = "correct {} -> {}".format(new, ref)
+    if new.endswith("-"):
+        menu_options["f"] = "fuse {} with following".format(new)
 
     # Always at the end of the list
-    options.extend(["v", "q"])
+    menu_options["v"] = "versification"
+    menu_options["q"] = "quit"
 
     # out line based on terminal size minus last line, minus options
-    out_line = curses.LINES - (1 + len(options))
+    out_line = curses.LINES - (1 + len(menu_choices))
 
-    for option in options:
-        option_text = "{}) {}".format(option, menu_options[option])
-        stdscr.addstr(out_line, 0, option_text)
+    for choice in menu_choices:
+        if choice in menu_options:
+            option_text = "{}) {}".format(choice, menu_options[choice])
+            stdscr.addstr(out_line, 0, option_text)
+        else:
+            option_text = "{})".format(choice)
+            stdscr.addstr(out_line, 0, option_text, curses.A_DIM)
+
         # Increment output line so we don't overwrite
         out_line += 1
 
-    return options
+    stdscr.refresh()
+    return menu_options
 
 
 def main(stdscr, book, lines):
@@ -139,8 +143,10 @@ def main(stdscr, book, lines):
             while need_response:
                 options = menu(stdscr, text)
                 resp = stdscr.getkey()
-                if resp in options:
+                if resp in options.keys():
                     need_response = False
+            # TODO flesh-out log here, including bcv, and instructions
+            # And find out what to do with it
             corrections.append(resp)
             stdscr.clear()
 
