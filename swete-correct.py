@@ -114,13 +114,14 @@ def main(stdscr, book, lines):
         if eval_line:
             status_line = "L: {} B: {} C: {} V: {}".format(line, book,
                                                            chapter, verse)
-            stdscr.addstr((curses.LINES - 1), 0, str(status_line), curses.A_REVERSE)
+            stdscr.addstr((curses.LINES - 1), 0, str(status_line),
+                          curses.A_REVERSE)
             # Show context of up to 5 lines (if possible)
             start_line = line - 6
             if start_line < 0:
                 start_line = 0
             end_line = line + 7
-            if end_line > ( len(lines) - 1 ):
+            if end_line > (len(lines) - 1):
                 end_line = len(lines) - 1
             display_lines = lines[start_line:end_line]
             for num in range(len(display_lines)):
