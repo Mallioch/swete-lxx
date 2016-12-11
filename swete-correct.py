@@ -121,10 +121,11 @@ def main(stdscr, book, lines):
             stdscr.addstr((curses.LINES - 1), 0, str(status_line),
                           curses.A_REVERSE)
             # Show context of up to 5 lines (if possible)
-            start_line = line - 6
+            context = (curses.LINES - len(menu_choices)) // 2
+            start_line = line - context
             if start_line < 0:
                 start_line = 0
-            end_line = line + 7
+            end_line = line + context - 1
             if end_line > (len(lines) - 1):
                 end_line = len(lines) - 1
             display_lines = lines[start_line:end_line]
