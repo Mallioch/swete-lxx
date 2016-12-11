@@ -144,11 +144,23 @@ def main(stdscr, book, lines):
                 options = menu(stdscr, text)
                 resp = stdscr.getkey()
                 if resp in options.keys():
-                    need_response = False
+                    # Quit and return corrections thus far
+                    if resp == "q":
+                        return corrections
+                    # Append response to log
+                    else:
+                        need_response = False
+                        correct_string = "{} {}:{} {}".format(book, chapter,
+                                                              verse,
+                                                              options[resp])
+                        # Only include actual changes
+                        if resp is not "n":
+                            corrections.append(correct_string)
             # TODO flesh-out log here, including bcv, and instructions
             # And find out what to do with it
-            corrections.append(resp)
             stdscr.clear()
+    # Return corrections if we complete the loop
+    return corrections
 
 
 if __name__ == "__main__":
@@ -163,4 +175,7 @@ if __name__ == "__main__":
     book = args.file.name.split(".")[0]
     lines = args.file.readlines()
 
-    curses.wrapper(main, book, lines)
+    corrections = curses.wrapper(main, book, lines)
+
+    for correction in corrections:
+        print(correction)
