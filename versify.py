@@ -33,6 +33,4 @@ vol.close()
 for line in lines:
     lb_tag = lbnum.search(line)
     if lb_tag:
-        
-    
-        
+        pass
