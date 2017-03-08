@@ -49,6 +49,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
         self.in_book = False
         self.in_header = False
         self.in_note = False
+        self.note_depth = 0
         self.page_right = False
         self.current_page = 0
 
@@ -106,6 +107,7 @@ class SweteLXX(xml.sax.handler.ContentHandler):
             self.in_header = True
 
         elif name == "note":
+            self.note_depth += 1
             self.in_note = True
 
         elif name == "pb" and self.in_book:
@@ -170,7 +172,9 @@ class SweteLXX(xml.sax.handler.ContentHandler):
             self.in_header = False
 
         elif name == "note":
-            self.in_note = False
+            self.note_depth -= 1
+            if self.note_depth < 1:
+                self.in_note = False
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
