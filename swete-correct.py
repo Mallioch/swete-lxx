@@ -87,6 +87,7 @@ def main(stdscr, book, lines):
     curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_BLACK)
 
     corrections = []
+    out_tokens = []
     chapter = 1
     verse = 0
 
@@ -187,7 +188,7 @@ def main(stdscr, book, lines):
                 if resp in options.keys():
                     # Quit and return corrections thus far
                     if resp == "q":
-                        return corrections
+                        return corrections, out_tokens
                     # Append response to log
                     else:
                         need_response = False
@@ -224,7 +225,7 @@ if __name__ == "__main__":
     d = difflib.Differ()
     results = list(d.compare(source_lines, delta_lines))
 
-    corrections = curses.wrapper(main, args.book, results)
+    corrections, out_tokens = curses.wrapper(main, args.book, results)
 
     for correction in corrections:
         print(correction)
