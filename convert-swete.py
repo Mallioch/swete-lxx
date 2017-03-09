@@ -2,7 +2,7 @@
 #
 # Convert Swete XML files to one token per line, with verses.
 #
-# Copyright 2015 Nathan D. Smith <nathan@smithfam.info>
+# Copyright 2015, 2017 Nathan D. Smith <nathan@smithfam.info>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -151,10 +151,11 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                     token.replace(char, "")
                 if len(token) < 1:
                     continue
-                end_token = koine.normalize(token)
+                # end_token = koine.normalize(token)
+                end_token = token
                 # Print only the normalized form
                 if self.task == "compare":
-                    print(end_token)
+                    print(self.unicode_normalize(end_token))
                 elif self.task == "convert":
                     print("%s%03d%s %s" % (self.current_book,
                                            self.current_chapter,

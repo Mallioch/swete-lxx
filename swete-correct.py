@@ -3,7 +3,7 @@
 # swete-correct.py provides an interface for human correction of
 # machine-corrected Swete LXX OCR results.
 #
-# Copyright (c) 2016 Nathan D. Smith <nathan@smithfam.info>
+# Copyright (c) 2016, 2017 Nathan D. Smith <nathan@smithfam.info>
 #
 # The MIT License (MIT)
 #
@@ -29,22 +29,20 @@
 
 import argparse
 import curses
+import difflib
+import koinenlp
 import re
 
-diff_chars = ["<", ">", "|"]
+diff_chars = ["?", "-", "+"]
 
 menu_choices = ["n", "c", "i", "d", "f", "v", "q"]
 
 
-def menu(stdscr, line):
+def menu(stdscr, text, operation, correct_text=None):
     """Draw the menu options in the user interface and return the list of
     valid options.
 
     """
-
-    elements = line.split()
-    ref = elements[0]
-    new = elements[-1]
 
     # Always at the beginning of the list
     menu_options = {
@@ -52,14 +50,12 @@ def menu(stdscr, line):
     }
 
     # logic here for contextual options
-    if "<" in elements:
-        menu_options["i"] = "insert {}".format(ref)
-    elif ">" in elements:
-        menu_options["d"] = "delete {}".format(new)
-    elif "|" in elements:
-        menu_options["c"] = "correct {} -> {}".format(new, ref)
-    if new.endswith("-"):
-        menu_options["f"] = "fuse {} with following".format(new)
+    if operation == "insert":
+        menu_options["i"] = "insert {}".format(text)
+    elif operation == "delete":
+        menu_options["d"] = "delete {}".format(text)
+    elif operation == "correct":
+        menu_options["c"] = "correct {} -> {}".format(text, correct_text)
 
     # Always at the end of the list
     menu_options["v"] = "versification"
@@ -94,12 +90,22 @@ def main(stdscr, book, lines):
     chapter = 1
     verse = 0
 
+    skip_lines = 0
+
     # re set-up
     verse_line = re.compile('^\d{3}.*$')
 
     # Search each line for differences
     for line in range(len(lines)):
-        text = lines[line]
+
+        # Break if lines should be skipped
+        if skip_lines > 0:
+            skip_lines -= 1
+            continue
+
+        diff = lines[line][0]
+        text = lines[line][2:].strip()
+        delta_text = None
 
         # Update reference based on left column
         if verse_line.match(text):
@@ -111,9 +117,43 @@ def main(stdscr, book, lines):
 
         eval_line = False
         # Look for diff_chars in line and set flag to eval_line
+
         for diff_char in diff_chars:
-            if diff_char in lines[line]:
+            if diff_char in diff:
                 eval_line = True
+                # Delete or correct
+                if diff == "-":
+                    next_diff = lines[line+1][0]
+                    # Correct
+                    if next_diff in ["+","?"]:
+                        operation = "correct"
+                        # skip one line on + line
+                        skip_lines = 1
+                        if next_diff == "?":
+                            # skip two lines on ? line
+                            skip_lines = 2
+                            delta_text = lines[line+2][2:].strip()
+                            ultimate_diff = lines[line+3][0]
+                            if ultimate_diff == "?":
+                                skip_lines = 3
+                        else:
+                            delta_text = lines[line+1][2:].strip()
+                        ## Backoff for unimportant differences
+                        # Punctuation and capitalization
+                        text_norm = koinenlp.remove_punctuation(text).lower()
+                        delta_norm = koinenlp.remove_punctuation(delta_text).lower()
+                        if text_norm == delta_norm:
+                            eval_line = False
+                        # Delta text has no diacritics
+                        if koinenlp.strip_diacritics(text) == delta_text:
+                            eval_line = False
+
+                    # Delete
+                    else:
+                        operation = "delete"
+                # Insert
+                elif diff == "+":
+                    operation = "insert"
         # Prepare to work if eval_line is True
         if eval_line:
             status_line = "L: {} B: {} C: {} V: {}".format(line, book,
@@ -142,7 +182,7 @@ def main(stdscr, book, lines):
             # Draw menu until legitimate response is received
             need_response = True
             while need_response:
-                options = menu(stdscr, text)
+                options = menu(stdscr, text, operation, delta_text)
                 resp = stdscr.getkey()
                 if resp in options.keys():
                     # Quit and return corrections thus far
@@ -168,15 +208,23 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser(
         description='provides an interface for human correction of \
         machine-corrected Swete LXX OCR results.')
-    argparser.add_argument('--file', '-f', metavar='<file>',
-                           type=argparse.FileType('r'), help='File to process')
+    argparser.add_argument('--source', '-s', metavar='<file>',
+                           type=argparse.FileType('r'), help='Source file' )
+    argparser.add_argument('--delta', '-d', metavar='<file>',
+                           type=argparse.FileType('r'), help='Delta file')
+    argparser.add_argument('--book', '-b', metavar='<title>',
+                           type=str, help='Book title')
+    argparser.add_argument('--num', '-n', metavar='<num>',
+                           type=int, help='Book number')
 
     args = argparser.parse_args()
 
-    book = args.file.name.split(".")[0]
-    lines = args.file.readlines()
+    source_lines = args.source.readlines()
+    delta_lines = args.delta.readlines()
+    d = difflib.Differ()
+    results = list(d.compare(source_lines, delta_lines))
 
-    corrections = curses.wrapper(main, book, lines)
+    corrections = curses.wrapper(main, args.book, results)
 
     for correction in corrections:
         print(correction)
