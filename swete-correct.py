@@ -237,7 +237,7 @@ def main(stdscr, book, lines, book_num):
             out_tokens[-2] += text
             out_tokens.pop()
     # Return corrections if we complete the loop
-    return corrections
+    return corrections, out_tokens
 
 
 if __name__ == "__main__":
