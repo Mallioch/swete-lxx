@@ -79,7 +79,7 @@ def menu(stdscr, text, operation, correct_text=None):
     return menu_options
 
 
-def main(stdscr, book, lines):
+def main(stdscr, book, lines, book_num):
     """The main program loop."""
 
     # Curses set-up
@@ -107,7 +107,10 @@ def main(stdscr, book, lines):
 
         diff = lines[line][0]
         text = lines[line][2:].strip()
-        punct_token = None
+        if text in punctuation:
+            punct_token = True
+        else:
+            punct_token = False
         delta_text = None
 
         # Update reference based on left column
@@ -118,6 +121,7 @@ def main(stdscr, book, lines):
             # Update chapter if verse num goes down
             if old_verse > verse:
                 chapter += 1
+        verse_string = "%s%03d%03d " % (book_num, chapter, verse)
 
         eval_line = False
         # Look for diff_chars in line and set flag to eval_line
@@ -155,7 +159,7 @@ def main(stdscr, book, lines):
                     # Delete
                     else:
                         # No need to eval punctuation
-                        if text in punctuation:
+                        if punct_token:
                             eval_line = False
                         else:
                             operation = "delete"
@@ -210,16 +214,16 @@ def main(stdscr, book, lines):
                             corrections.append(correct_string)
                         # Append appropriate tokens to out_tokens
                         if operation == "insert":
-                            if resp == "i":
-                                out_tokens.append(text)
+                            if (resp == "i") and (not verse_match):
+                                out_tokens.append(verse_string + text)
                         else:
                             if resp == "n":
-                                out_tokens.append(text)
+                                out_tokens.append(verse_string + text)
                         if resp == "c":
                             # Actually skip only if correction made without ?
                             if would_skip_lines > 0:
                                 skip_lines = would_skip_lines
-                            out_tokens.append(delta_text)
+                            out_tokens.append(verse_string + delta_text)
             # TODO flesh-out log here, including bcv, and instructions
             # And find out what to do with it
             stdscr.clear()
@@ -227,7 +231,11 @@ def main(stdscr, book, lines):
         else:
             # Do not output verse change tokens
             if not verse_match:
-                out_tokens.append(text)
+                out_tokens.append(verse_string + text)
+        # Append punctuation to previous out_token
+        if punct_token:
+            out_tokens[-2] += text
+            out_tokens.pop()
     # Return corrections if we complete the loop
     return corrections
 
@@ -252,7 +260,7 @@ if __name__ == "__main__":
     d = difflib.Differ()
     results = list(d.compare(source_lines, delta_lines))
 
-    corrections, out_tokens = curses.wrapper(main, args.book, results)
+    corrections, out_tokens = curses.wrapper(main, args.book, results, args.num)
 
     for correction in corrections:
         print(correction)
