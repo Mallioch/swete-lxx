@@ -34,8 +34,8 @@ import koinenlp
 import re
 
 diff_chars = ["?", "-", "+"]
-
-menu_choices = ["n", "c", "i", "d", "f", "v", "q"]
+menu_choices = ["n", "c", "i", "d", "v", "q"]
+punctuation = [".", ",", ";", "·", "[", "]", "§"]
 
 
 def menu(stdscr, text, operation, correct_text=None):
@@ -89,7 +89,7 @@ def main(stdscr, book, lines):
     corrections = []
     out_tokens = []
     chapter = 1
-    verse = 0
+    verse = 1
 
     skip_lines = 0
 
@@ -99,6 +99,7 @@ def main(stdscr, book, lines):
     # Search each line for differences
     for line in range(len(lines)):
 
+        would_skip_lines = 0
         # Break if lines should be skipped
         if skip_lines > 0:
             skip_lines -= 1
@@ -106,10 +107,12 @@ def main(stdscr, book, lines):
 
         diff = lines[line][0]
         text = lines[line][2:].strip()
+        punct_token = None
         delta_text = None
 
         # Update reference based on left column
-        if verse_line.match(text):
+        verse_match = verse_line.match(text)
+        if verse_match:
             old_verse = verse
             verse = int(text[0:3])
             # Update chapter if verse num goes down
@@ -126,19 +129,19 @@ def main(stdscr, book, lines):
                 if diff == "-":
                     next_diff = lines[line+1][0]
                     # Correct
-                    if next_diff in ["+","?"]:
+                    if next_diff == "+":
                         operation = "correct"
-                        # skip one line on + line
-                        skip_lines = 1
-                        if next_diff == "?":
-                            # skip two lines on ? line
-                            skip_lines = 2
-                            delta_text = lines[line+2][2:].strip()
-                            ultimate_diff = lines[line+3][0]
-                            if ultimate_diff == "?":
-                                skip_lines = 3
-                        else:
-                            delta_text = lines[line+1][2:].strip()
+                        delta_text = lines[line+1][2:].strip()
+                        would_skip_lines = 1
+                    elif next_diff == "?":
+                        operation = "correct"
+                        delta_text = lines[line+2][2:].strip()
+                        # skip two lines on ? line
+                        skip_lines = 2
+                        # If there is a subsequent ? line, skip even more
+                        ultimate_diff = lines[line+3][0]
+                        if ultimate_diff == "?":
+                            skip_lines = 3
                         ## Backoff for unimportant differences
                         # Punctuation and capitalization
                         text_norm = koinenlp.remove_punctuation(text).lower()
@@ -151,10 +154,17 @@ def main(stdscr, book, lines):
 
                     # Delete
                     else:
-                        operation = "delete"
+                        # No need to eval punctuation
+                        if text in punctuation:
+                            eval_line = False
+                        else:
+                            operation = "delete"
                 # Insert
                 elif diff == "+":
                     operation = "insert"
+                # Failed correct, don't actually eval
+                elif diff == "?":
+                    eval_line = False
         # Prepare to work if eval_line is True
         if eval_line:
             status_line = "L: {} B: {} C: {} V: {}".format(line, book,
@@ -198,9 +208,26 @@ def main(stdscr, book, lines):
                         # Only include actual changes
                         if resp is not "n":
                             corrections.append(correct_string)
+                        # Append appropriate tokens to out_tokens
+                        if operation == "insert":
+                            if resp == "i":
+                                out_tokens.append(text)
+                        else:
+                            if resp == "n":
+                                out_tokens.append(text)
+                        if resp == "c":
+                            # Actually skip only if correction made without ?
+                            if would_skip_lines > 0:
+                                skip_lines = would_skip_lines
+                            out_tokens.append(delta_text)
             # TODO flesh-out log here, including bcv, and instructions
             # And find out what to do with it
             stdscr.clear()
+        # Non-evaluated lines are appended
+        else:
+            # Do not output verse change tokens
+            if not verse_match:
+                out_tokens.append(text)
     # Return corrections if we complete the loop
     return corrections
 
@@ -229,3 +256,6 @@ if __name__ == "__main__":
 
     for correction in corrections:
         print(correction)
+
+    for out_token in out_tokens:
+        print(out_token)

@@ -23,6 +23,7 @@
 # THE SOFTWARE.
 
 import argparse
+import koinenlp
 import re
 import unicodedata
 import xml.sax
@@ -151,11 +152,18 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                     token.replace(char, "")
                 if len(token) < 1:
                     continue
-                # end_token = koine.normalize(token)
-                end_token = token
+                # Last character punctuation? split to new token?
+                punct_token = None
+                if koinenlp.remove_punctuation(token) == token[:-1]:
+                    punct_token = token[-1]
+                    end_token = token[:-1]
+                else:
+                    end_token = token
                 # Print only the normalized form
                 if self.task == "compare":
                     print(self.unicode_normalize(end_token))
+                    if punct_token:
+                        print(punct_token)
                 elif self.task == "convert":
                     print("%s%03d%s %s" % (self.current_book,
                                            self.current_chapter,
