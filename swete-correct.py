@@ -293,4 +293,4 @@ if __name__ == "__main__":
     for correction in corrections:
         print(correction)
 
-    args.out.writelines(out_tokens)
+    args.out.writelines("{}\n".format(out_token) for out_token in out_tokens)

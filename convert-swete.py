@@ -153,6 +153,8 @@ class SweteLXX(xml.sax.handler.ContentHandler):
                 if len(token) < 1:
                     continue
                 # Last character punctuation? split to new token?
+                # shim for GREEK ANO TELEIA
+                token = token.replace("·", "·")
                 punct_token = None
                 if koinenlp.remove_punctuation(token) == token[:-1]:
                     punct_token = token[-1]
