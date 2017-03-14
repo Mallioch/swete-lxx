@@ -38,7 +38,32 @@ menu_choices = ["n", "c", "i", "d", "v", "q"]
 punctuation = [".", ",", ";", "·", "[", "]", "§"]
 
 
+def backoff(text, delta_text):
+    """Return True if evaluation should continue, or False if the backoff
+    algorithm found that the surface differences in text, delta are trivial
+
+    """
+
+    text_norm = koinenlp.remove_punctuation(text).lower()
+    delta_norm = koinenlp.remove_punctuation(delta_text).lower()
+
+    # This function is only called in contexts in which eval_line is True
+    eval_line = True
+
+    if text_norm == delta_norm:
+        eval_line = False
+    # Delta text has no diacritics
+    elif koinenlp.strip_diacritics(text) == delta_text:
+        eval_line = False
+    # Elision is no worry
+    elif (text_norm[-1] == "’") and (delta_norm[-1] == "'"):
+        eval_line = False
+
+    return eval_line
+
+
 def menu(stdscr, text, operation, correct_text=None):
+
     """Draw the menu options in the user interface and return the list of
     valid options.
 
@@ -106,7 +131,7 @@ def main(stdscr, book, lines, book_num):
             continue
 
         diff = lines[line][0]
-        text = lines[line][2:].strip()
+        text = koinenlp.unicode_normalize(lines[line][2:].strip())
         if text in punctuation:
             punct_token = True
         else:
@@ -135,26 +160,27 @@ def main(stdscr, book, lines, book_num):
                     # Correct
                     if next_diff == "+":
                         operation = "correct"
-                        delta_text = lines[line+1][2:].strip()
+                        delta_text = koinenlp.unicode_normalize(lines[line+1][2:].strip())
                         would_skip_lines = 1
+
+                        # Check backoff
+                        eval_line = backoff(text, delta_text)
+                        # If backoff returns negative, skip a line
+                        if not eval_line:
+                            skip_lines = 1
+
                     elif next_diff == "?":
                         operation = "correct"
-                        delta_text = lines[line+2][2:].strip()
+                        delta_text = koinenlp.unicode_normalize(lines[line+2][2:].strip())
                         # skip two lines on ? line
                         skip_lines = 2
                         # If there is a subsequent ? line, skip even more
                         ultimate_diff = lines[line+3][0]
                         if ultimate_diff == "?":
                             skip_lines = 3
-                        ## Backoff for unimportant differences
-                        # Punctuation and capitalization
-                        text_norm = koinenlp.remove_punctuation(text).lower()
-                        delta_norm = koinenlp.remove_punctuation(delta_text).lower()
-                        if text_norm == delta_norm:
-                            eval_line = False
-                        # Delta text has no diacritics
-                        if koinenlp.strip_diacritics(text) == delta_text:
-                            eval_line = False
+
+                        # Check backoff
+                        eval_line = backoff(text, delta_text)
 
                     # Delete
                     else:
@@ -252,6 +278,8 @@ if __name__ == "__main__":
                            type=str, help='Book title')
     argparser.add_argument('--num', '-n', metavar='<num>',
                            type=int, help='Book number')
+    argparser.add_argument('--out', '-o', metavar='<file>',
+                           type=argparse.FileType('w'), help='Output file' )
 
     args = argparser.parse_args()
 
@@ -265,5 +293,4 @@ if __name__ == "__main__":
     for correction in corrections:
         print(correction)
 
-    for out_token in out_tokens:
-        print(out_token)
+    args.out.writelines(out_tokens)
