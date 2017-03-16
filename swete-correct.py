@@ -50,15 +50,17 @@ def backoff(text, delta_text):
     # This function is only called in contexts in which eval_line is True
     eval_line = True
 
-    if text_norm == delta_norm:
-        eval_line = False
-    # Delta text has no diacritics
-    elif koinenlp.strip_diacritics(text) == delta_text:
-        eval_line = False
-    # Elision is no worry
-    elif (text_norm[-1] == "’") and (delta_norm[-1] == "'"):
-        eval_line = False
-
+    try:
+        if text_norm == delta_norm:
+            eval_line = False
+        # Delta text has no diacritics
+        elif koinenlp.strip_diacritics(text) == delta_text:
+            eval_line = False
+        # Elision is no worry
+        elif (text_norm[-1] == "’") and (delta_norm[-1] == "'"):
+            eval_line = False
+    except:
+        eval_line = True
     return eval_line
 
 
@@ -156,7 +158,11 @@ def main(stdscr, book, lines, book_num):
                 eval_line = True
                 # Delete or correct
                 if diff == "-":
-                    next_diff = lines[line+1][0]
+                    # Avoid barfing on index out of range
+                    try:
+                        next_diff = lines[line+1][0]
+                    except:
+                        next_diff = None
                     # Correct
                     if next_diff == "+":
                         operation = "correct"
@@ -175,7 +181,10 @@ def main(stdscr, book, lines, book_num):
                         # skip two lines on ? line
                         skip_lines = 2
                         # If there is a subsequent ? line, skip even more
-                        ultimate_diff = lines[line+3][0]
+                        try:
+                            ultimate_diff = lines[line+3][0]
+                        except:
+                            ultimate_diff = None
                         if ultimate_diff == "?":
                             skip_lines = 3
 
