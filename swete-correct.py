@@ -167,13 +167,22 @@ def main(stdscr, book, lines, book_num):
                     if next_diff == "+":
                         operation = "correct"
                         delta_text = koinenlp.unicode_normalize(lines[line+1][2:].strip())
-                        would_skip_lines = 1
+                        # check for yet another diff
+                        try:
+                            ultimate_diff = lines[line+2][0]
+                        except:
+                            ultimate_diff = None
+
+                        if ultimate_diff == "?":
+                            would_skip_lines = 2
+                        else:
+                            would_skip_lines = 1
 
                         # Check backoff
                         eval_line = backoff(text, delta_text)
                         # If backoff returns negative, skip a line
                         if not eval_line:
-                            skip_lines = 1
+                            skip_lines = would_skip_lines
 
                     elif next_diff == "?":
                         operation = "correct"
@@ -264,8 +273,8 @@ def main(stdscr, book, lines, book_num):
             stdscr.clear()
         # Non-evaluated lines are appended
         else:
-            # Do not output verse change tokens
-            if not verse_match:
+            # Do not output verse change tokens and unskipped ? lines
+            if (not verse_match) and (diff != "?"):
                 out_tokens.append(verse_string + text)
         # Append punctuation to previous out_token
         if punct_token:
